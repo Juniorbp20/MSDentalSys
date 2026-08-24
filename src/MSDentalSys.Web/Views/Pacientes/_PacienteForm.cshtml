@@ -10,6 +10,7 @@
     }
 
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <p class="text-muted small mb-3"><span class="text-danger">*</span> Campos obligatorios</p>
 
     <div class="form-section">
         <div class="form-section-heading">
@@ -22,18 +23,19 @@
 
         <div class="row g-3">
             <div class="col-md-6">
-                <label asp-for="Nombre" class="form-label"></label>
+                <label asp-for="Nombre" class="form-label"></label><span class="text-danger" aria-hidden="true"> *</span>
                 <input asp-for="Nombre" class="form-control" autocomplete="off" />
                 <span asp-validation-for="Nombre" class="text-danger"></span>
             </div>
             <div class="col-md-6">
-                <label asp-for="Apellido" class="form-label"></label>
+                <label asp-for="Apellido" class="form-label"></label><span class="text-danger" aria-hidden="true"> *</span>
                 <input asp-for="Apellido" class="form-control" autocomplete="off" />
                 <span asp-validation-for="Apellido" class="text-danger"></span>
             </div>
             <div class="col-md-4">
                 <label asp-for="Cedula" class="form-label"></label>
                 <input asp-for="Cedula" class="form-control" autocomplete="off" placeholder="Opcional" />
+                <small class="form-text text-muted">Obligatoria para pacientes de 18 a&ntilde;os o m&aacute;s.</small>
                 <span asp-validation-for="Cedula" class="text-danger"></span>
             </div>
             <div class="col-md-4">
@@ -73,6 +75,40 @@
         <div class="form-section-heading">
             <span class="section-number">02</span>
             <div>
+                <h2>Seguro m&eacute;dico</h2>
+                <p>Registra la aseguradora del paciente, si corresponde.</p>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-12">
+                <fieldset>
+                    <legend class="form-label mb-2">&iquest;Tiene seguro m&eacute;dico? <span class="text-danger" aria-hidden="true">*</span></legend>
+                    <div class="d-flex gap-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="tiene-seguro-si" name="TieneSeguro" value="true" checked="@(Model.TieneSeguro ? "checked" : null)" />
+                            <label class="form-check-label" for="tiene-seguro-si">S&iacute;</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" id="tiene-seguro-no" name="TieneSeguro" value="false" checked="@(!Model.TieneSeguro ? "checked" : null)" />
+                            <label class="form-check-label" for="tiene-seguro-no">No</label>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+            <div id="seguro-selector" class="col-12" hidden="@(Model.TieneSeguro ? null : "hidden")">
+                <label asp-for="SeguroId" class="form-label">Seguro m&eacute;dico <span class="text-danger" aria-hidden="true">*</span></label>
+                <select asp-for="SeguroId" asp-items="Model.Seguros" class="form-select">
+                    <option value="">Selecciona un seguro</option>
+                </select>
+                <span asp-validation-for="SeguroId" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section">
+        <div class="form-section-heading">
+            <span class="section-number">03</span>
+            <div>
                 <h2>Contacto de emergencia</h2>
                 <p>Una persona a contactar en caso de ser necesario.</p>
             </div>
@@ -93,7 +129,7 @@
 
     <div class="form-section">
         <div class="form-section-heading">
-            <span class="section-number">03</span>
+            <span class="section-number">04</span>
             <div>
                 <h2>Antecedentes clínicos</h2>
                 <p>Información relevante para la atención odontológica.</p>
@@ -125,7 +161,7 @@
                 <textarea asp-for="HabitosRelevantes" class="form-control" autocomplete="off" rows="2"></textarea>
                 <span asp-validation-for="HabitosRelevantes" class="text-danger"></span>
             </div>
-            <div class="col-md-6">
+            <div id="embarazo-field" class="col-md-6">
                 <label asp-for="Embarazo" class="form-label"></label>
                 <select asp-for="Embarazo" class="form-select" autocomplete="off">
                     <option value="">No especificado</option>
@@ -147,3 +183,35 @@
         <button type="submit" class="btn btn-ms-primary">@(formAction == "Create" ? "Registrar paciente" : "Guardar cambios")</button>
     </div>
 </form>
+
+<script>
+    (() => {
+        const selector = document.getElementById('seguro-selector');
+        const seguro = document.getElementById('SeguroId');
+        const radios = document.querySelectorAll('input[name="TieneSeguro"]');
+        const sexo = document.getElementById('Sexo');
+        const embarazoField = document.getElementById('embarazo-field');
+        const embarazo = document.getElementById('Embarazo');
+
+        const updateSeguroVisibility = () => {
+            const tieneSeguro = document.getElementById('tiene-seguro-si')?.checked === true;
+            if (selector) selector.hidden = !tieneSeguro;
+            if (seguro) {
+                seguro.required = tieneSeguro;
+                if (!tieneSeguro) seguro.value = '';
+            }
+        };
+
+        radios.forEach(radio => radio.addEventListener('change', updateSeguroVisibility));
+        updateSeguroVisibility();
+
+        const updateEmbarazoVisibility = () => {
+            const esFemenino = sexo?.value === 'Femenino';
+            if (embarazoField) embarazoField.hidden = !esFemenino;
+            if (embarazo && !esFemenino) embarazo.value = '';
+        };
+
+        sexo?.addEventListener('change', updateEmbarazoVisibility);
+        updateEmbarazoVisibility();
+    })();
+</script>

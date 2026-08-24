@@ -4,6 +4,7 @@ using MSDentalSys.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MSDentalSys.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260823022042_AddSeguros")]
+    partial class AddSeguros
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -339,9 +342,6 @@ namespace MSDentalSys.Data.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
-                    b.Property<int?>("SeguroId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Sexo")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -359,8 +359,6 @@ namespace MSDentalSys.Data.Migrations
                     b.HasIndex("Cedula")
                         .IsUnique()
                         .HasFilter("[Cedula] IS NOT NULL");
-
-                    b.HasIndex("SeguroId");
 
                     b.ToTable("Pacientes");
                 });
@@ -677,16 +675,6 @@ namespace MSDentalSys.Data.Migrations
                     b.Navigation("AtencionOdontologica");
                 });
 
-            modelBuilder.Entity("MSDentalSys.Data.Models.Paciente", b =>
-                {
-                    b.HasOne("MSDentalSys.Data.Models.Seguro", "Seguro")
-                        .WithMany("Pacientes")
-                        .HasForeignKey("SeguroId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Seguro");
-                });
-
             modelBuilder.Entity("MSDentalSys.Data.Models.Tratamiento", b =>
                 {
                     b.HasOne("MSDentalSys.Data.Models.AtencionOdontologica", "AtencionOdontologica")
@@ -769,11 +757,6 @@ namespace MSDentalSys.Data.Migrations
             modelBuilder.Entity("MSDentalSys.Data.Models.Paciente", b =>
                 {
                     b.Navigation("AntecedenteClinico");
-                });
-
-            modelBuilder.Entity("MSDentalSys.Data.Models.Seguro", b =>
-                {
-                    b.Navigation("Pacientes");
                 });
 
             modelBuilder.Entity("MSDentalSys.Data.Models.ServicioOdontologico", b =>

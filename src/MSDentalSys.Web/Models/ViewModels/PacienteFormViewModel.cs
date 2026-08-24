@@ -1,10 +1,19 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace MSDentalSys.Web.Models.ViewModels
 {
     public class PacienteFormViewModel
     {
         public int PacienteId { get; set; }
+
+        public bool TieneSeguro { get; set; }
+
+        public int? SeguroId { get; set; }
+
+        [ValidateNever]
+        public IEnumerable<SelectListItem> Seguros { get; set; } = Enumerable.Empty<SelectListItem>();
 
         [Required(ErrorMessage = "El nombre es obligatorio.")]
         [StringLength(60, ErrorMessage = "El nombre no puede superar los 60 caracteres.")]

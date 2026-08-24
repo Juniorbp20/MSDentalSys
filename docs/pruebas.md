@@ -15,21 +15,22 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 | Infraestructura | 1 |
 | Login/autenticación | 7 |
 | Atención odontológica | 13 |
-| Pacientes | 5 |
-| Citas | 20 |
+| Pacientes | 26 |
+| Citas | 28 |
 | Servicios | 7 |
 | Usuarios | 9 |
 | Dashboard | 8 |
 | Diagnósticos | 9 |
 | Tratamientos | 20 |
 | Evoluciones clínicas | 12 |
-| Integración HTTP/autorización | 13 |
-| **Total** | **124** |
+| Integración HTTP/autorización | 18 |
+| Seguros y SeguroSeeder | 13 |
+| **Total** | **171** |
 
 ## Cobertura por grupo
 
-- **Pacientes**: registro, cédula duplicada u opcional y activación/desactivación.
-- **Citas**: creación, conflictos de horario, reagendamiento y estados finales.
+- **Pacientes**: registro, cédula duplicada u opcional, seguros activos e históricos, embarazo condicionado y activación/desactivación.
+- **Citas**: creación, autocomplete de pacientes activos, conflictos de horario, reagendamiento y estados finales.
 - **Usuarios**: creación, roles, duplicidad de correo, cambio de rol y estados.
 - **Servicios**: creación, edición, activación/desactivación y búsquedas.
 - **Dashboard**: conteos generales y filtrado de citas para odontólogos.
@@ -39,13 +40,14 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 - **Tratamientos**: asociación con servicios activos, múltiples tratamientos por atención, estados `Planificado`, `En progreso` y `Completado`, transiciones válidas y restricciones del odontólogo asignado.
 - **Evoluciones clínicas**: validación de fecha y descripción, múltiples evoluciones por atención y validación del odontólogo asignado.
 - **Integración HTTP/autorización**: autenticación requerida, redirecciones, permisos por rol y acceso permitido o rechazado.
+- **Seguros y SeguroSeeder**: catálogo administrativo, permisos, activación/desactivación, relación con pacientes, carga inicial idempotente y conservación de registros manuales.
 - **Infraestructura**: funcionamiento básico de xUnit.
 
 ## Base de datos y seguridad de las pruebas
 
 No se utiliza `MSDentalSysDB`. Tampoco se ejecutan migraciones contra la base real ni `database update`.
 
-Las pruebas unitarias y de controlador utilizan bases SQLite en memoria. Las pruebas HTTP usan una base SQLite aislada durante la vida de la factory. La aplicación de pruebas se ejecuta en el entorno `Testing`, donde no se ejecutan los seeders de producción.
+Las pruebas unitarias y de controlador utilizan bases SQLite en memoria. Las pruebas HTTP usan una base SQLite aislada durante la vida de la factory. La aplicación de pruebas se ejecuta en el entorno `Testing`, donde no se ejecutan `RoleSeeder`, `AdminSeeder` ni `SeguroSeeder` de producción. `SeguroSeeder` carga el catálogo inicial verificado de forma idempotente, conserva registros manuales y no elimina datos.
 
 La autenticación de integración no utiliza usuarios reales ni User Secrets. El esquema de Tests emite claims controlados para simular cada rol y permitir verificar la autorización real de los controladores.
 
@@ -61,7 +63,7 @@ dotnet test .\MSDentalSys.sln
 Estado validado actualmente:
 
 ```text
-124 pruebas correctas
+171 pruebas correctas
 0 fallidas
 0 omitidas
 ```

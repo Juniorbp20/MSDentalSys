@@ -19,9 +19,9 @@
             <div class="row g-4">
                 <div class="col-md-6">
                     <label asp-for="PacienteId" class="form-label"></label>
-                    <select asp-for="PacienteId" asp-items="Model.Pacientes" class="form-select" autocomplete="off">
-                        <option value="">Selecciona un paciente</option>
-                    </select>
+                    <input asp-for="PacienteId" type="hidden" />
+                    <input id="PacienteBusqueda" name="PacienteNombre" value="@Model.PacienteNombre" class="form-control" autocomplete="off" placeholder="Buscar por nombre, apellido o c&eacute;dula..." aria-controls="patient-search-results" aria-autocomplete="list" />
+                    <div id="patient-search-results" class="list-group mt-2" role="listbox" hidden></div>
                     <span asp-validation-for="PacienteId" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
@@ -59,4 +59,78 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const search = document.getElementById('PacienteBusqueda');
+            const hiddenId = document.getElementById('PacienteId');
+            const results = document.getElementById('patient-search-results');
+            const endpoint = '@Url.Action("BuscarPacientes", "Citas")';
+            let timer;
+            let selectedName = search?.value ?? '';
+
+            const clearResults = () => {
+                if (!results) return;
+                results.innerHTML = '';
+                results.hidden = true;
+            };
+
+            const renderResults = (patients) => {
+                if (!results) return;
+                results.innerHTML = '';
+
+                if (patients.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'list-group-item text-muted';
+                    empty.textContent = 'No se encontraron pacientes activos.';
+                    results.appendChild(empty);
+                    results.hidden = false;
+                    return;
+                }
+
+                patients.forEach(patient => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'list-group-item list-group-item-action';
+                    option.setAttribute('role', 'option');
+                    const name = document.createElement('strong');
+                    name.textContent = patient.nombreCompleto;
+                    const lineBreak = document.createElement('br');
+                    const documentId = document.createElement('small');
+                    documentId.textContent = patient.cedula ? `Cédula: ${patient.cedula}` : 'Cédula: No registrada';
+                    option.append(name, lineBreak, documentId);
+                    option.addEventListener('click', () => {
+                        search.value = patient.nombreCompleto;
+                        selectedName = patient.nombreCompleto;
+                        hiddenId.value = patient.id;
+                        clearResults();
+                    });
+                    results.appendChild(option);
+                });
+
+                results.hidden = false;
+            };
+
+            search?.addEventListener('input', () => {
+                if (search.value !== selectedName) hiddenId.value = '0';
+                clearTimeout(timer);
+                clearResults();
+
+                const term = search.value.trim();
+                if (term.length < 1) return;
+
+                timer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`${endpoint}?termino=${encodeURIComponent(term)}`);
+                        if (response.ok) renderResults(await response.json());
+                    } catch {
+                        clearResults();
+                    }
+                }, 300);
+            });
+
+            document.addEventListener('click', event => {
+                if (!results?.contains(event.target) && event.target !== search) clearResults();
+            });
+        })();
+    </script>
 }

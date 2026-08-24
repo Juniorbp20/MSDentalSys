@@ -24,16 +24,16 @@ Contiene la persistencia y el modelo de dominio relacionado con ella:
 
 - `Context/ApplicationDbContext.cs`: contexto EF Core y configuración de relaciones, índices y restricciones.
 - `Context/ApplicationDbContextFactory.cs`: creación del contexto para design-time.
-- `Models/`: entidades persistentes, incluyendo pacientes, citas, servicios, usuarios y antecedentes clínicos.
+- `Models/`: entidades persistentes, incluyendo pacientes, citas, servicios, seguros, usuarios y antecedentes clínicos.
 - `Migrations/`: migraciones existentes de Entity Framework Core.
-- `InitialData/`: seeders de roles y del administrador inicial.
+- `InitialData/`: seeders de roles, del administrador inicial y del catálogo verificado de seguros.
 
 ### MSDentalSys.Web
 
 Contiene la interfaz y la lógica de aplicación MVC:
 
-- `Controllers/`: reciben solicitudes HTTP y coordinan las operaciones del sistema. Incluye `AccountController`, `DashboardController`, `PacientesController`, `CitasController`, `ServiciosController`, `UsuariosController`, `AtencionesController`, `DiagnosticosController`, `TratamientosController` y `EvolucionesClinicasController`.
-- `Models/ViewModels/`: modelos específicos para formularios y vistas; no sustituyen a las entidades persistentes. Incluye `AtencionOdontologicaCreateViewModel`, `DiagnosticoCreateViewModel`, `TratamientoCreateViewModel` y `EvolucionClinicaCreateViewModel`, además de los ViewModels administrativos.
+- `Controllers/`: reciben solicitudes HTTP y coordinan las operaciones del sistema. Incluye `AccountController`, `DashboardController`, `PacientesController`, `CitasController`, `SegurosController`, `ServiciosController`, `UsuariosController`, `AtencionesController`, `DiagnosticosController`, `TratamientosController` y `EvolucionesClinicasController`.
+- `Models/ViewModels/`: modelos específicos para formularios y vistas; no sustituyen a las entidades persistentes. Incluye `AtencionOdontologicaCreateViewModel`, `DiagnosticoCreateViewModel`, `TratamientoCreateViewModel`, `EvolucionClinicaCreateViewModel` y `SeguroFormViewModel`, además de los ViewModels administrativos.
 - `Views/`: vistas Razor.
 - `wwwroot/`: recursos estáticos.
 - `Program.cs`: configuración de servicios, Identity, persistencia, middleware y rutas.
@@ -57,6 +57,14 @@ Contiene las pruebas automatizadas:
 - **Migraciones**: describen la evolución del esquema de base de datos.
 - **Pruebas**: verifican comportamiento con SQLite InMemory y, para HTTP, con una factory aislada.
 
+### Seguros médicos
+
+La entidad `Seguro` contiene `SeguroId`, `Nombre`, `Estado` y `FechaCreacion`. La relación es `Seguro 1:N Paciente`: un paciente puede no tener seguro mediante `Paciente.SeguroId` nullable, y un seguro puede asociarse a múltiples pacientes.
+
+El módulo web correspondiente está compuesto por `SegurosController`, `SeguroFormViewModel` y `Views/Seguros`. Solo el rol `Administrador` administra el catálogo. El catálogo no modela coberturas, pólizas, reclamaciones ni facturación.
+
+`SeguroSeeder`, ubicado en `MSDentalSys.Data/InitialData`, carga el catálogo inicial verificado de forma idempotente, conserva registros manuales y no se ejecuta en el entorno `Testing`.
+
 ## Árbol detallado
 
 ```text
@@ -70,7 +78,8 @@ MSDentalSys/
 │   │   │   └── ApplicationDbContextFactory.cs
 │   │   ├── InitialData/
 │   │   │   ├── AdminSeeder.cs
-│   │   │   └── RoleSeeder.cs
+│   │   │   ├── RoleSeeder.cs
+│   │   │   └── SeguroSeeder.cs
 │   │   ├── Migrations/
 │   │   ├── Models/
 │   │   └── MSDentalSys.Data.csproj
@@ -79,6 +88,7 @@ MSDentalSys/
 │       │   ├── AtencionesController.cs
 │       │   ├── DiagnosticosController.cs
 │       │   ├── EvolucionesClinicasController.cs
+│       │   ├── SegurosController.cs
 │       │   ├── TratamientosController.cs
 │       │   └── ... controladores administrativos y de autenticación
 │       ├── Models/
@@ -86,6 +96,7 @@ MSDentalSys/
 │       │       ├── AtencionOdontologicaCreateViewModel.cs
 │       │       ├── DiagnosticoCreateViewModel.cs
 │       │       ├── EvolucionClinicaCreateViewModel.cs
+│       │       ├── SeguroFormViewModel.cs
 │       │       ├── TratamientoCreateViewModel.cs
 │       │       └── ... ViewModels administrativos
 │       ├── Properties/
@@ -93,6 +104,7 @@ MSDentalSys/
 │       │   ├── Atenciones/
 │       │   ├── Diagnosticos/
 │       │   ├── EvolucionesClinicas/
+│       │   ├── Seguros/
 │       │   ├── Tratamientos/
 │       │   └── ... vistas administrativas y compartidas
 │       ├── wwwroot/
@@ -120,6 +132,7 @@ La carpeta `docs/prototipos/` conserva el prototipo visual histórico y no forma
 - `Atención odontológica` 1 : N `Tratamientos`.
 - `Atención odontológica` 1 : N `Evoluciones clínicas`.
 - `Servicio odontológico` 1 : N `Tratamientos`.
+- `Seguro` 1 : N `Paciente`.
 
 El flujo de la aplicación es:
 

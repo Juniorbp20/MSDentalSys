@@ -124,6 +124,35 @@ namespace MSDentalSys.Web.Controllers
             return View(model);
         }
 
+        [HttpGet]
+        public async Task<IActionResult> BuscarPacientes(string? termino)
+        {
+            if (string.IsNullOrWhiteSpace(termino))
+            {
+                return Json(Array.Empty<object>());
+            }
+
+            var term = termino.Trim();
+            var pacientes = await _context.Pacientes
+                .AsNoTracking()
+                .Where(p => p.Estado &&
+                    (EF.Functions.Like(p.Nombre, $"%{term}%") ||
+                     EF.Functions.Like(p.Apellido, $"%{term}%") ||
+                     (p.Cedula != null && EF.Functions.Like(p.Cedula, $"%{term}%"))))
+                .OrderBy(p => p.Apellido)
+                .ThenBy(p => p.Nombre)
+                .Take(10)
+                .Select(p => new
+                {
+                    id = p.PacienteId,
+                    nombreCompleto = p.Nombre + " " + p.Apellido,
+                    cedula = p.Cedula
+                })
+                .ToListAsync();
+
+            return Json(pacientes);
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador,Recepcionista")]
@@ -379,6 +408,10 @@ namespace MSDentalSys.Web.Controllers
                 Text = $"{p.Nombre} {p.Apellido}",
                 Selected = p.PacienteId == model.PacienteId
             });
+            model.PacienteNombre = pacientes
+                .Where(p => p.PacienteId == model.PacienteId)
+                .Select(p => $"{p.Nombre} {p.Apellido}")
+                .FirstOrDefault() ?? model.PacienteNombre;
             model.Odontologos = odontologos.Select(o => new SelectListItem
             {
                 Value = o.Id,

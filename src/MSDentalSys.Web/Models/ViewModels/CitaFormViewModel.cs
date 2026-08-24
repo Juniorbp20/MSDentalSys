@@ -9,6 +9,9 @@ namespace MSDentalSys.Web.Models.ViewModels
         [Display(Name = "Paciente")]
         public int PacienteId { get; set; }
 
+        [Display(Name = "Paciente")]
+        public string? PacienteNombre { get; set; }
+
         [Required(ErrorMessage = "Selecciona un odontólogo.")]
         [Display(Name = "Odontólogo")]
         public string OdontologoId { get; set; } = string.Empty;

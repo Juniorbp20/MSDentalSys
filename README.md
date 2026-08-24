@@ -157,7 +157,7 @@ dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 
 La solución cuenta con pruebas para los módulos administrativos y clínicos, Login/autenticación, autorización HTTP e infraestructura.
 
-Estado actual: **123 pruebas correctas**.
+Estado actual: **171 pruebas correctas**.
 
 Las pruebas de datos utilizan SQLite InMemory y no utilizan `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en el entorno `Testing`, con una base SQLite aislada y un esquema de autenticación exclusivo para Tests.
 

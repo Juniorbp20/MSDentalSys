@@ -152,6 +152,26 @@ public class AuthorizationIntegrationTests : IClassFixture<CustomWebApplicationF
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Seguros_Administrador_EsPermitido()
+    {
+        using var client = CreateClient("Administrador");
+        var response = await client.GetAsync("/Seguros");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Odontologo")]
+    [InlineData("Recepcionista")]
+    public async Task Seguros_RolesClinicos_NoEstanAutorizados(string role)
+    {
+        using var client = CreateClient(role);
+        var response = await client.GetAsync("/Seguros");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private HttpClient CreateClient(string? role = null)
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions

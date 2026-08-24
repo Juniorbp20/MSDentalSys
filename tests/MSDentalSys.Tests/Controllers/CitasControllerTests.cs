@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using MSDentalSys.Data.Context;
@@ -16,6 +17,136 @@ namespace MSDentalSys.Tests.Controllers;
 
 public class CitasControllerTests
 {
+    [Fact]
+    public async Task BuscarPacientes_PorNombre_DevuelvePacienteActivo()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+
+        var result = await database.CreateController().BuscarPacientes("Paciente");
+
+        var document = ToJsonDocument(result);
+        Assert.Contains(document.RootElement.EnumerateArray(), item =>
+            item.GetProperty("nombreCompleto").GetString() == "Paciente Ficticio");
+    }
+
+    [Fact]
+    public async Task BuscarPacientes_PorApellido_DevuelveCoincidencia()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+
+        var result = await database.CreateController().BuscarPacientes("Ficticio");
+
+        var document = ToJsonDocument(result);
+        Assert.Equal(1, document.RootElement.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task BuscarPacientes_PorCedula_DevuelveCoincidencia()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+
+        var result = await database.CreateController().BuscarPacientes("0000009");
+
+        var document = ToJsonDocument(result);
+        Assert.Equal("001-0000009-9", document.RootElement[0].GetProperty("cedula").GetString());
+    }
+
+    [Fact]
+    public async Task BuscarPacientes_PacienteInactivo_NoAparece()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        database.Context.Pacientes.Add(new Paciente
+        {
+            Nombre = "Paciente Inactivo",
+            Apellido = "No Disponible",
+            Estado = false
+        });
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().BuscarPacientes("Inactivo");
+
+        var document = ToJsonDocument(result);
+        Assert.Empty(document.RootElement.EnumerateArray());
+    }
+
+    [Fact]
+    public async Task BuscarPacientes_SinCoincidencias_DevuelveListaVacia()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+
+        var result = await database.CreateController().BuscarPacientes("NoExiste");
+
+        var document = ToJsonDocument(result);
+        Assert.Empty(document.RootElement.EnumerateArray());
+    }
+
+    [Fact]
+    public async Task BuscarPacientes_RespetaLimiteDeDiezResultados()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        database.Context.Pacientes.AddRange(Enumerable.Range(1, 12).Select(index => new Paciente
+        {
+            Nombre = $"Coincidencia {index}",
+            Apellido = "Limite",
+            Estado = true
+        }));
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().BuscarPacientes("Limite");
+
+        var document = ToJsonDocument(result);
+        Assert.Equal(10, document.RootElement.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Create_ConPacienteInexistente_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new CitaFormViewModel
+        {
+            PacienteId = 999,
+            OdontologoId = database.OdontologistId,
+            ServicioOdontologicoId = database.ServiceId,
+            FechaHoraInicio = new DateTime(2030, 2, 1, 9, 0, 0)
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(controller.ModelState[nameof(CitaFormViewModel.PacienteId)]!.Errors,
+            error => error.ErrorMessage.Contains("inactivo", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Create_ConPacienteInactivo_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var patient = await database.Context.Pacientes.SingleAsync(p => p.PacienteId == database.PatientId);
+        patient.Estado = false;
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(database.CreateAppointmentModel(new DateTime(2030, 2, 1, 10, 0, 0)));
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(controller.ModelState[nameof(CitaFormViewModel.PacienteId)]!.Errors,
+            error => error.ErrorMessage.Contains("inactivo", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static JsonDocument ToJsonDocument(IActionResult result)
+    {
+        var json = Assert.IsType<JsonResult>(result);
+        return JsonDocument.Parse(JsonSerializer.Serialize(json.Value));
+    }
+
     [Fact]
     public async Task Create_ConDatosValidos_CreaCitaPendiente()
     {

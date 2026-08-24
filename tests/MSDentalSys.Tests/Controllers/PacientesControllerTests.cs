@@ -14,6 +14,114 @@ namespace MSDentalSys.Tests.Controllers;
 public class PacientesControllerTests
 {
     [Fact]
+    public async Task Create_Get_CargaSoloSegurosActivos()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        database.Context.Seguros.AddRange(
+            database.CreateSeguro("Seguro Activo"),
+            database.CreateSeguro("Seguro Inactivo", false));
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Create();
+
+        var model = Assert.IsType<PacienteFormViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.Equal(new[] { "Seguro Activo" }, model.Seguros.Select(seguro => seguro.Text));
+    }
+
+    [Fact]
+    public async Task Edit_Get_SinSeguro_CargaSegurosActivos()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        database.Context.Seguros.Add(database.CreateSeguro("Seguro Activo"));
+        var paciente = new Paciente { Nombre = "Paciente", Apellido = "Sin Seguro" };
+        database.Context.Pacientes.Add(paciente);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Edit(paciente.PacienteId);
+
+        var model = Assert.IsType<PacienteFormViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.Equal(new[] { "Seguro Activo" }, model.Seguros.Select(seguro => seguro.Text));
+    }
+
+    [Fact]
+    public async Task Edit_Get_ConSeguroActivo_ConservaLaSeleccion()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var seguro = database.CreateSeguro("Seguro Activo");
+        database.Context.Seguros.Add(seguro);
+        await database.Context.SaveChangesAsync();
+        var paciente = new Paciente { Nombre = "Paciente", Apellido = "Asegurado", SeguroId = seguro.SeguroId };
+        database.Context.Pacientes.Add(paciente);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Edit(paciente.PacienteId);
+
+        var model = Assert.IsType<PacienteFormViewModel>(Assert.IsType<ViewResult>(result).Model);
+        var option = Assert.Single(model.Seguros);
+        Assert.Equal(seguro.SeguroId.ToString(), option.Value);
+        Assert.True(option.Selected);
+    }
+
+    [Fact]
+    public async Task Edit_Get_ConSeguroHistoricoInactivo_MuestraSoloEseInactivo()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var historico = database.CreateSeguro("Seguro Histórico", false);
+        var noAsociado = database.CreateSeguro("Seguro Inactivo No Asociado", false);
+        database.Context.Seguros.AddRange(historico, noAsociado);
+        await database.Context.SaveChangesAsync();
+        var paciente = new Paciente { Nombre = "Paciente", Apellido = "Asegurado", SeguroId = historico.SeguroId };
+        database.Context.Pacientes.Add(paciente);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Edit(paciente.PacienteId);
+
+        var model = Assert.IsType<PacienteFormViewModel>(Assert.IsType<ViewResult>(result).Model);
+        var option = Assert.Single(model.Seguros);
+        Assert.Equal("Seguro Histórico", option.Text);
+        Assert.True(option.Selected);
+    }
+
+    [Fact]
+    public async Task Create_PostInvalido_MantieneSegurosDisponibles()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        database.Context.Seguros.Add(database.CreateSeguro("Seguro Activo"));
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Sin Seguro Seleccionado",
+            TieneSeguro = true
+        });
+
+        var model = Assert.IsType<PacienteFormViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.Equal("Seguro Activo", Assert.Single(model.Seguros).Text);
+    }
+
+    [Fact]
+    public async Task Edit_PostInvalido_MantieneSegurosDisponibles()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        database.Context.Seguros.Add(database.CreateSeguro("Seguro Activo"));
+        var paciente = new Paciente { Nombre = "Paciente", Apellido = "Sin Seguro" };
+        database.Context.Pacientes.Add(paciente);
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Edit(paciente.PacienteId, new PacienteFormViewModel
+        {
+            PacienteId = paciente.PacienteId,
+            Nombre = "Paciente",
+            Apellido = "Sin Seguro",
+            TieneSeguro = true
+        });
+
+        var model = Assert.IsType<PacienteFormViewModel>(Assert.IsType<ViewResult>(result).Model);
+        Assert.Equal("Seguro Activo", Assert.Single(model.Seguros).Text);
+    }
+
+    [Fact]
     public async Task Create_ConDatosValidos_CreaPacienteYAntecedenteActivo()
     {
         await using var database = await TestDatabase.CreateAsync();
@@ -109,6 +217,322 @@ public class PacientesControllerTests
     }
 
     [Fact]
+    public async Task Create_MasculinoConEmbarazoManipulado_LimpiaElValor()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Masculino",
+            Sexo = "Masculino",
+            Embarazo = true
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Null((await database.Context.Pacientes.Include(p => p.AntecedenteClinico).SingleAsync())
+            .AntecedenteClinico!.Embarazo);
+    }
+
+    [Fact]
+    public async Task Create_FemeninoConEmbarazo_ConservaElValor()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Femenina",
+            Sexo = "Femenino",
+            Embarazo = true
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.True((await database.Context.Pacientes.Include(p => p.AntecedenteClinico).SingleAsync())
+            .AntecedenteClinico!.Embarazo);
+    }
+
+    [Fact]
+    public async Task Edit_FemeninoAMasculino_NormalizaEmbarazo()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var paciente = new Paciente
+        {
+            Nombre = "Paciente",
+            Apellido = "Femenina",
+            Sexo = "Femenino",
+            AntecedenteClinico = new AntecedenteClinico { Embarazo = true }
+        };
+        database.Context.Pacientes.Add(paciente);
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Edit(paciente.PacienteId, new PacienteFormViewModel
+        {
+            PacienteId = paciente.PacienteId,
+            Nombre = "Paciente",
+            Apellido = "Masculino",
+            Sexo = "Masculino",
+            Embarazo = true
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var stored = await database.Context.Pacientes
+            .Include(p => p.AntecedenteClinico)
+            .SingleAsync();
+        Assert.Null(stored.AntecedenteClinico!.Embarazo);
+    }
+
+    [Fact]
+    public async Task Create_AdultoSinCedula_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Adulto",
+            Apellido = "Sin Cedula",
+            FechaNacimiento = DateTime.Today.AddYears(-18).AddDays(-1)
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Contains(controller.ModelState[nameof(PacienteFormViewModel.Cedula)]!.Errors,
+            error => error.ErrorMessage.Contains("obligatoria", StringComparison.OrdinalIgnoreCase));
+        Assert.Empty(await database.Context.Pacientes.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_AdultoConCedulaValida_EsAceptado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Adulto",
+            Apellido = "Con Cedula",
+            FechaNacimiento = DateTime.Today.AddYears(-18).AddDays(-1),
+            Cedula = "001-0000010-1"
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Single(await database.Context.Pacientes.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_MenorSinCedula_EsAceptado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Menor",
+            Apellido = "Sin Cedula",
+            FechaNacimiento = DateTime.Today.AddYears(-17)
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Null((await database.Context.Pacientes.SingleAsync()).Cedula);
+    }
+
+    [Fact]
+    public async Task Create_MenorConCedulaDuplicada_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        database.Context.Pacientes.Add(new Paciente
+        {
+            Nombre = "Paciente",
+            Apellido = "Existente",
+            Cedula = "001-0000011-1"
+        });
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Menor",
+            Apellido = "Duplicado",
+            FechaNacimiento = DateTime.Today.AddYears(-10),
+            Cedula = "001-0000011-1"
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Single(await database.Context.Pacientes.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_PacienteExactamenteDe18AniosSinCedula_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Exactamente",
+            Apellido = "Dieciocho",
+            FechaNacimiento = DateTime.Today.AddYears(-18)
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(controller.ModelState.IsValid);
+    }
+
+    [Fact]
+    public async Task Create_SinSeguro_FuerzaSeguroIdNull()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var seguro = database.CreateSeguro("Seguro Manipulado");
+        database.Context.Seguros.Add(seguro);
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Sin Seguro",
+            TieneSeguro = false,
+            SeguroId = seguro.SeguroId
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Null((await database.Context.Pacientes.SingleAsync()).SeguroId);
+    }
+
+    [Fact]
+    public async Task Create_ConSeguroSinSeleccion_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Sin Seleccion",
+            TieneSeguro = true
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.False(controller.ModelState.IsValid);
+    }
+
+    [Fact]
+    public async Task Create_ConSeguroActivo_EsAceptado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var seguro = database.CreateSeguro("Seguro Activo");
+        database.Context.Seguros.Add(seguro);
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Asegurado",
+            TieneSeguro = true,
+            SeguroId = seguro.SeguroId
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal(seguro.SeguroId, (await database.Context.Pacientes.SingleAsync()).SeguroId);
+    }
+
+    [Fact]
+    public async Task Create_ConSeguroInexistente_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Seguro Inexistente",
+            TieneSeguro = true,
+            SeguroId = 999
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Empty(await database.Context.Pacientes.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_ConSeguroInactivo_EsRechazado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var seguro = database.CreateSeguro("Seguro Inactivo", false);
+        database.Context.Seguros.Add(seguro);
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente",
+            Apellido = "Seguro Inactivo",
+            TieneSeguro = true,
+            SeguroId = seguro.SeguroId
+        });
+
+        Assert.IsType<ViewResult>(result);
+        Assert.Empty(await database.Context.Pacientes.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Edit_ConservaSeguroExistente()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var seguro = database.CreateSeguro("Seguro Histórico", false);
+        var paciente = new Paciente { Nombre = "Paciente", Apellido = "Asegurado", Seguro = seguro };
+        database.Context.Pacientes.Add(paciente);
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        var result = await controller.Edit(paciente.PacienteId, new PacienteFormViewModel
+        {
+            PacienteId = paciente.PacienteId,
+            Nombre = "Paciente Editado",
+            Apellido = "Asegurado",
+            TieneSeguro = true,
+            SeguroId = seguro.SeguroId
+        });
+
+        Assert.IsType<RedirectToActionResult>(result);
+        var stored = await database.Context.Pacientes.SingleAsync();
+        Assert.Equal("Paciente Editado", stored.Nombre);
+        Assert.Equal(seguro.SeguroId, stored.SeguroId);
+    }
+
+    [Fact]
+    public async Task Create_UnSeguroPuedeAsociarseAVariosPacientes()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var seguro = database.CreateSeguro("Seguro Familiar");
+        database.Context.Seguros.Add(seguro);
+        await database.Context.SaveChangesAsync();
+        var controller = database.CreateController();
+
+        await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente Uno",
+            Apellido = "Familia",
+            TieneSeguro = true,
+            SeguroId = seguro.SeguroId
+        });
+        controller = database.CreateController();
+        await controller.Create(new PacienteFormViewModel
+        {
+            Nombre = "Paciente Dos",
+            Apellido = "Familia",
+            TieneSeguro = true,
+            SeguroId = seguro.SeguroId
+        });
+
+        Assert.Equal(2, await database.Context.Pacientes.CountAsync(p => p.SeguroId == seguro.SeguroId));
+    }
+
+    [Fact]
     public async Task Deactivate_PacienteActivo_CambiaEstadoSinEliminarlo()
     {
         await using var database = await TestDatabase.CreateAsync();
@@ -196,6 +620,16 @@ public class PacientesControllerTests
             };
             controller.TempData = new TempDataDictionary(httpContext, new NullTempDataProvider());
             return controller;
+        }
+
+        public Seguro CreateSeguro(string name, bool state = true)
+        {
+            return new Seguro
+            {
+                Nombre = name,
+                Estado = state,
+                FechaCreacion = new DateTime(2030, 1, 1, 8, 0, 0)
+            };
         }
 
         public async ValueTask DisposeAsync()
