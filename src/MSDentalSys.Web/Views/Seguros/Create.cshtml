@@ -1,0 +1,32 @@
+@model MSDentalSys.Web.Models.ViewModels.SeguroFormViewModel
+@{
+    ViewData["Title"] = "Nuevo seguro";
+}
+
+<div class="service-page">
+    <div class="page-heading">
+        <div>
+            <p class="dashboard-eyebrow">Cat&aacute;logo administrativo</p>
+            <h1>Nuevo seguro m&eacute;dico</h1>
+            <p>Registra una aseguradora para el cat&aacute;logo.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-light">Volver</a>
+    </div>
+
+    <div class="service-form-card">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="mb-3">
+                <label asp-for="Nombre" class="form-label"></label>
+                <input asp-for="Nombre" class="form-control" autocomplete="off" />
+                <span asp-validation-for="Nombre" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-ms-primary">Guardar seguro</button>
+            <a asp-action="Index" class="btn btn-light">Cancelar</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using MSDentalSys.Data.Context;
 using MSDentalSys.Data.Models;
@@ -54,6 +55,7 @@ namespace MSDentalSys.Web.Controllers
 
             var paciente = await _context.Pacientes
                 .Include(p => p.AntecedenteClinico)
+                .Include(p => p.Seguro)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PacienteId == id);
 
@@ -62,9 +64,11 @@ namespace MSDentalSys.Web.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Administrador,Recepcionista")]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            return View(new PacienteFormViewModel());
+            var model = new PacienteFormViewModel();
+            await LoadSegurosAsync(model);
+            return View(model);
         }
 
         [HttpPost]
@@ -72,14 +76,19 @@ namespace MSDentalSys.Web.Controllers
         [Authorize(Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Create(PacienteFormViewModel model)
         {
+            NormalizeEmbarazoBySexo(model);
+            await ValidateConditionalFieldsAsync(model);
+
             if (!ModelState.IsValid)
             {
+                await LoadSegurosAsync(model);
                 return View(model);
             }
 
             if (await CedulaExistsAsync(model.Cedula, null))
             {
                 ModelState.AddModelError(nameof(model.Cedula), "La cédula ya pertenece a otro paciente.");
+                await LoadSegurosAsync(model);
                 return View(model);
             }
 
@@ -89,6 +98,7 @@ namespace MSDentalSys.Web.Controllers
                 Apellido = model.Apellido.Trim(),
                 Cedula = NullIfWhiteSpace(model.Cedula),
                 FechaNacimiento = model.FechaNacimiento,
+                SeguroId = model.SeguroId,
                 Sexo = NullIfWhiteSpace(model.Sexo),
                 Telefono = NullIfWhiteSpace(model.Telefono),
                 Correo = NullIfWhiteSpace(model.Correo),
@@ -119,6 +129,7 @@ namespace MSDentalSys.Web.Controllers
             catch (DbUpdateException)
             {
                 ModelState.AddModelError(nameof(model.Cedula), "La cédula ya pertenece a otro paciente.");
+                await LoadSegurosAsync(model);
                 return View(model);
             }
 
@@ -136,10 +147,18 @@ namespace MSDentalSys.Web.Controllers
 
             var paciente = await _context.Pacientes
                 .Include(p => p.AntecedenteClinico)
+                .Include(p => p.Seguro)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PacienteId == id);
 
-            return paciente is null ? NotFound() : View(ToFormViewModel(paciente));
+            if (paciente is null)
+            {
+                return NotFound();
+            }
+
+            var model = ToFormViewModel(paciente);
+            await LoadSegurosAsync(model, paciente.SeguroId);
+            return View(model);
         }
 
         [HttpPost]
@@ -151,19 +170,9 @@ namespace MSDentalSys.Web.Controllers
                 return NotFound();
             }
 
-            if (!ModelState.IsValid)
-            {
-                return View(model);
-            }
-
-            if (await CedulaExistsAsync(model.Cedula, id))
-            {
-                ModelState.AddModelError(nameof(model.Cedula), "La cédula ya pertenece a otro paciente.");
-                return View(model);
-            }
-
             var paciente = await _context.Pacientes
                 .Include(p => p.AntecedenteClinico)
+                .Include(p => p.Seguro)
                 .FirstOrDefaultAsync(p => p.PacienteId == id);
 
             if (paciente is null)
@@ -171,10 +180,27 @@ namespace MSDentalSys.Web.Controllers
                 return NotFound();
             }
 
+            NormalizeEmbarazoBySexo(model);
+            await ValidateConditionalFieldsAsync(model, paciente.SeguroId);
+
+            if (!ModelState.IsValid)
+            {
+                await LoadSegurosAsync(model, paciente.SeguroId);
+                return View(model);
+            }
+
+            if (await CedulaExistsAsync(model.Cedula, id))
+            {
+                ModelState.AddModelError(nameof(model.Cedula), "La cédula ya pertenece a otro paciente.");
+                await LoadSegurosAsync(model, paciente.SeguroId);
+                return View(model);
+            }
+
             paciente.Nombre = model.Nombre.Trim();
             paciente.Apellido = model.Apellido.Trim();
             paciente.Cedula = NullIfWhiteSpace(model.Cedula);
             paciente.FechaNacimiento = model.FechaNacimiento;
+            paciente.SeguroId = model.SeguroId;
             paciente.Sexo = NullIfWhiteSpace(model.Sexo);
             paciente.Telefono = NullIfWhiteSpace(model.Telefono);
             paciente.Correo = NullIfWhiteSpace(model.Correo);
@@ -203,6 +229,7 @@ namespace MSDentalSys.Web.Controllers
             catch (DbUpdateException)
             {
                 ModelState.AddModelError(nameof(model.Cedula), "La cédula ya pertenece a otro paciente.");
+                await LoadSegurosAsync(model, paciente.SeguroId);
                 return View(model);
             }
 
@@ -248,6 +275,72 @@ namespace MSDentalSys.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        private async Task ValidateConditionalFieldsAsync(PacienteFormViewModel model, int? currentSeguroId = null)
+        {
+            if (model.FechaNacimiento.HasValue && CalculateAge(model.FechaNacimiento.Value) >= 18 &&
+                string.IsNullOrWhiteSpace(model.Cedula))
+            {
+                ModelState.AddModelError(nameof(model.Cedula), "La cédula es obligatoria para pacientes de 18 años o más.");
+            }
+
+            if (!model.TieneSeguro)
+            {
+                model.SeguroId = null;
+                return;
+            }
+
+            if (!model.SeguroId.HasValue)
+            {
+                ModelState.AddModelError(nameof(model.SeguroId), "Selecciona un seguro médico.");
+                return;
+            }
+
+            var seguroValido = await _context.Seguros.AnyAsync(seguro =>
+                seguro.SeguroId == model.SeguroId.Value &&
+                (seguro.Estado || seguro.SeguroId == currentSeguroId));
+
+            if (!seguroValido)
+            {
+                ModelState.AddModelError(nameof(model.SeguroId), "El seguro seleccionado no existe o está inactivo.");
+            }
+        }
+
+        private static void NormalizeEmbarazoBySexo(PacienteFormViewModel model)
+        {
+            if (!string.Equals(model.Sexo, "Femenino", StringComparison.OrdinalIgnoreCase))
+            {
+                model.Embarazo = null;
+            }
+        }
+
+        private async Task LoadSegurosAsync(PacienteFormViewModel model, int? currentSeguroId = null)
+        {
+            model.Seguros = await _context.Seguros
+                .AsNoTracking()
+                .Where(seguro => seguro.Estado || seguro.SeguroId == currentSeguroId)
+                .OrderBy(seguro => seguro.Nombre)
+                .Select(seguro => new SelectListItem
+                {
+                    Value = seguro.SeguroId.ToString(),
+                    Text = seguro.Nombre,
+                    Selected = seguro.SeguroId == model.SeguroId
+                })
+                .ToListAsync();
+        }
+
+        private static int CalculateAge(DateTime birthDate)
+        {
+            var today = DateTime.Today;
+            var age = today.Year - birthDate.Year;
+
+            if (birthDate.Date > today.AddYears(-age))
+            {
+                age--;
+            }
+
+            return age;
+        }
+
         private async Task<bool> CedulaExistsAsync(string? cedula, int? pacienteId)
         {
             var normalizedCedula = NullIfWhiteSpace(cedula);
@@ -276,6 +369,8 @@ namespace MSDentalSys.Web.Controllers
                 Apellido = paciente.Apellido,
                 Cedula = paciente.Cedula,
                 FechaNacimiento = paciente.FechaNacimiento,
+                TieneSeguro = paciente.SeguroId.HasValue,
+                SeguroId = paciente.SeguroId,
                 Sexo = paciente.Sexo,
                 Telefono = paciente.Telefono,
                 Correo = paciente.Correo,

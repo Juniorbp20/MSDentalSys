@@ -45,9 +45,11 @@ if (!app.Environment.IsEnvironment("Testing"))
     {
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         await RoleSeeder.SeedAsync(roleManager);
         await AdminSeeder.SeedAsync(userManager, builder.Configuration);
+        await SeguroSeeder.SeedAsync(dbContext);
     }
 }
 

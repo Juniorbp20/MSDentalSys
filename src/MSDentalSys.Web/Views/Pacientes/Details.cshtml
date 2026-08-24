@@ -35,6 +35,7 @@
                     <div><dt>Nombre completo</dt><dd>@Model.Nombre @Model.Apellido</dd></div>
                     <div><dt>Cédula</dt><dd>@(Model.Cedula ?? "No especificada")</dd></div>
                     <div><dt>Fecha de nacimiento</dt><dd>@(Model.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "No especificada")</dd></div>
+                    <div><dt>Seguro m&eacute;dico</dt><dd>@(Model.Seguro?.Nombre ?? "No registrado")</dd></div>
                     <div><dt>Sexo</dt><dd>@(Model.Sexo ?? "No especificado")</dd></div>
                     <div><dt>Teléfono</dt><dd>@(Model.Telefono ?? "No especificado")</dd></div>
                     <div><dt>Correo electrónico</dt><dd>@(Model.Correo ?? "No especificado")</dd></div>
@@ -55,7 +56,10 @@
                     <div><dt>Medicamentos actuales</dt><dd>@(Model.AntecedenteClinico?.MedicamentosActuales ?? "No registrados")</dd></div>
                     <div><dt>Cirugías previas</dt><dd>@(Model.AntecedenteClinico?.CirugiasPrevias ?? "No registradas")</dd></div>
                     <div><dt>Hábitos relevantes</dt><dd>@(Model.AntecedenteClinico?.HabitosRelevantes ?? "No registrados")</dd></div>
-                    <div><dt>Embarazo</dt><dd>@(Model.AntecedenteClinico?.Embarazo is true ? "Sí" : Model.AntecedenteClinico?.Embarazo is false ? "No" : "No especificado")</dd></div>
+                    @if (Model.Sexo == "Femenino")
+                    {
+                        <div><dt>Embarazo</dt><dd>@(Model.AntecedenteClinico?.Embarazo is true ? "Sí" : Model.AntecedenteClinico?.Embarazo is false ? "No" : "No especificado")</dd></div>
+                    }
                     <div><dt>Observaciones</dt><dd>@(Model.AntecedenteClinico?.Observaciones ?? "Sin observaciones")</dd></div>
                 </dl>
             </div>

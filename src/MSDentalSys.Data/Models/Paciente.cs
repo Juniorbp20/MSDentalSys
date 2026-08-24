@@ -44,6 +44,10 @@ namespace MSDentalSys.Data.Models
 
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
 
+        public int? SeguroId { get; set; }
+
+        public Seguro? Seguro { get; set; }
+
         public AntecedenteClinico? AntecedenteClinico { get; set; }
     }
 }

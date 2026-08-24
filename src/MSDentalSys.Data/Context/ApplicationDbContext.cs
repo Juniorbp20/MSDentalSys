@@ -19,6 +19,7 @@ namespace MSDentalSys.Data.Context
         public DbSet<Diagnostico> Diagnosticos { get; set; }
         public DbSet<EvolucionClinica> EvolucionesClinicas { get; set; }
         public DbSet<Tratamiento> Tratamientos { get; set; }
+        public DbSet<Seguro> Seguros { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -106,6 +107,16 @@ namespace MSDentalSys.Data.Context
                 .WithMany()
                 .HasForeignKey(t => t.ServicioOdontologicoId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Paciente>()
+                .HasOne(p => p.Seguro)
+                .WithMany(s => s.Pacientes)
+                .HasForeignKey(p => p.SeguroId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Seguro>()
+                .HasIndex(s => s.Nombre)
+                .IsUnique();
         }
     }
 }
