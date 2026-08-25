@@ -16,16 +16,16 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 | Login/autenticación | 7 |
 | Atención odontológica | 13 |
 | Pacientes | 26 |
-| Citas | 28 |
+| Citas | 30 |
 | Servicios | 7 |
 | Usuarios | 9 |
 | Dashboard | 8 |
 | Diagnósticos | 9 |
 | Tratamientos | 20 |
 | Evoluciones clínicas | 12 |
-| Integración HTTP/autorización | 18 |
+| Integración HTTP/autorización | 24 |
 | Seguros y SeguroSeeder | 13 |
-| **Total** | **171** |
+| **Total** | **179** |
 
 ## Cobertura por grupo
 
@@ -39,7 +39,7 @@ El entorno `Testing` evita la ejecución de `RoleSeeder` y `AdminSeeder` de prod
 - **Diagnósticos**: creación asociada a una atención, múltiples diagnósticos por atención y validación del odontólogo asignado.
 - **Tratamientos**: asociación con servicios activos, múltiples tratamientos por atención, estados `Planificado`, `En progreso` y `Completado`, transiciones válidas y restricciones del odontólogo asignado.
 - **Evoluciones clínicas**: validación de fecha y descripción, múltiples evoluciones por atención y validación del odontólogo asignado.
-- **Integración HTTP/autorización**: autenticación requerida, redirecciones, permisos por rol y acceso permitido o rechazado.
+- **Integración HTTP/autorización**: autenticación requerida, redirecciones, permisos por rol, edición de pacientes y acceso permitido o rechazado.
 - **Seguros y SeguroSeeder**: catálogo administrativo, permisos, activación/desactivación, relación con pacientes, carga inicial idempotente y conservación de registros manuales.
 - **Infraestructura**: funcionamiento básico de xUnit.
 
@@ -63,7 +63,7 @@ dotnet test .\MSDentalSys.sln
 Estado validado actualmente:
 
 ```text
-171 pruebas correctas
+179 pruebas correctas
 0 fallidas
 0 omitidas
 ```

@@ -76,6 +76,53 @@ public class AuthorizationIntegrationTests : IClassFixture<CustomWebApplicationF
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("Administrador")]
+    [InlineData("Recepcionista")]
+    public async Task PacientesEditGet_RolesAdministrativos_EsPermitido(string role)
+    {
+        using var client = CreateClient(role);
+        var response = await client.GetAsync("/Pacientes/Edit/1");
+
+        Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PacientesEditGet_Odontologo_EsRechazado()
+    {
+        using var client = CreateClient("Odontologo");
+        var response = await client.GetAsync("/Pacientes/Edit/1");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PacientesEditPost_Odontologo_EsRechazado()
+    {
+        using var client = CreateClient("Odontologo");
+        var response = await client.PostAsync("/Pacientes/Edit/1", new FormUrlEncodedContent([]));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PacientesDetails_Odontologo_ContinuaPermitido()
+    {
+        using var client = CreateClient("Odontologo");
+        var response = await client.GetAsync("/Pacientes/Details/1");
+
+        Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PacientesIndex_Odontologo_ContinuaPermitido()
+    {
+        using var client = CreateClient("Odontologo");
+        var response = await client.GetAsync("/Pacientes");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task CitasCreate_Odontologo_EsRechazado()
     {

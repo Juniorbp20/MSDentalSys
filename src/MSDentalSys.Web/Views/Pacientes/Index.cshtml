@@ -73,7 +73,10 @@
                             </td>
                             <td class="text-end text-nowrap">
                                 <a asp-action="Details" asp-route-id="@paciente.PacienteId" class="btn btn-sm btn-action" title="Ver detalles">Ver</a>
-                                <a asp-action="Edit" asp-route-id="@paciente.PacienteId" class="btn btn-sm btn-action" title="Editar paciente">Editar</a>
+                                @if (User.IsInRole("Administrador") || User.IsInRole("Recepcionista"))
+                                {
+                                    <a asp-action="Edit" asp-route-id="@paciente.PacienteId" class="btn btn-sm btn-action" title="Editar paciente">Editar</a>
+                                }
                                 @if (User.IsInRole("Administrador") && paciente.Estado)
                                 {
                                     <form asp-action="Deactivate" asp-route-id="@paciente.PacienteId" method="post" class="d-inline" onsubmit="return confirm('¿Deseas desactivar este paciente?');">

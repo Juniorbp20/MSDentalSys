@@ -105,6 +105,38 @@ public class CitasControllerTests
     }
 
     [Fact]
+    public async Task CreateGet_CargaOdontologosYServiciosSinListaCompletaDePacientes()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+
+        var result = await database.CreateController().Create();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<CitaFormViewModel>(view.Model);
+        Assert.Empty(model.Pacientes);
+        Assert.Contains(model.Odontologos, item => item.Value == database.OdontologistId);
+        Assert.Contains(model.Servicios, item => item.Value == database.ServiceId.ToString());
+    }
+
+    [Fact]
+    public async Task Create_ConModelStateInvalido_ConservaNombreDelPacienteSeleccionado()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var controller = database.CreateController();
+        var model = database.CreateAppointmentModel(new DateTime(2030, 2, 1, 9, 0, 0));
+        controller.ModelState.AddModelError(nameof(model.FechaHoraInicio), "Error de prueba");
+
+        var result = await controller.Create(model);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var returnedModel = Assert.IsType<CitaFormViewModel>(view.Model);
+        Assert.Equal("Paciente Ficticio", returnedModel.PacienteNombre);
+        Assert.Empty(returnedModel.Pacientes);
+    }
+
+    [Fact]
     public async Task Create_ConPacienteInexistente_EsRechazado()
     {
         await using var database = await TestDatabase.CreateAsync();
@@ -122,6 +154,8 @@ public class CitasControllerTests
         Assert.IsType<ViewResult>(result);
         Assert.Contains(controller.ModelState[nameof(CitaFormViewModel.PacienteId)]!.Errors,
             error => error.ErrorMessage.Contains("inactivo", StringComparison.OrdinalIgnoreCase));
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Null(Assert.IsType<CitaFormViewModel>(view.Model).PacienteNombre);
     }
 
     [Fact]
@@ -139,6 +173,8 @@ public class CitasControllerTests
         Assert.IsType<ViewResult>(result);
         Assert.Contains(controller.ModelState[nameof(CitaFormViewModel.PacienteId)]!.Errors,
             error => error.ErrorMessage.Contains("inactivo", StringComparison.OrdinalIgnoreCase));
+        var view = Assert.IsType<ViewResult>(result);
+        Assert.Null(Assert.IsType<CitaFormViewModel>(view.Model).PacienteNombre);
     }
 
     private static JsonDocument ToJsonDocument(IActionResult result)

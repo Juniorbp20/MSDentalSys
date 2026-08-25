@@ -138,6 +138,7 @@ namespace MSDentalSys.Web.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id is null)
@@ -163,6 +164,7 @@ namespace MSDentalSys.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Edit(int id, PacienteFormViewModel model)
         {
             if (id != model.PacienteId)

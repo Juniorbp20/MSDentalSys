@@ -47,15 +47,15 @@ Los roles definidos son `Administrador`, `Odontologo` y `Recepcionista`.
 
 ### Administrador
 
-Puede gestionar pacientes, citas, servicios y usuarios, además de consultar las estadísticas generales del sistema. También puede acceder a los módulos clínicos y gestionar la información de atención odontológica.
+Puede gestionar completamente los pacientes, citas, servicios, usuarios y el catálogo de seguros médicos, además de consultar las estadísticas generales del sistema. También puede acceder a los módulos clínicos según los permisos establecidos.
 
 ### Recepcionista
 
-Puede consultar pacientes, registrar y gestionar administrativamente citas, consultar servicios y acceder a las estadísticas generales. No puede administrar usuarios.
+Puede consultar, registrar y editar administrativamente los pacientes; también puede registrar y gestionar administrativamente citas, consultar servicios y acceder a las estadísticas generales. No puede administrar usuarios ni seguros médicos.
 
 ### Odontologo
 
-Puede consultar pacientes y servicios, consultar sus citas y actualizar los estados clínicos permitidos de una cita. También puede registrar atenciones, diagnósticos, tratamientos y evoluciones clínicas únicamente para sus atenciones asignadas. El Dashboard filtra sus estadísticas de citas por odontólogo, mientras que el total de pacientes activos es global. No puede administrar usuarios ni crear o reagendar citas administrativamente.
+Puede consultar pacientes y servicios, consultar sus citas y actualizar los estados clínicos permitidos de una cita. No puede crear ni editar pacientes ni administrar seguros médicos. También puede registrar atenciones, diagnósticos, tratamientos y evoluciones clínicas únicamente para sus atenciones asignadas. El Dashboard filtra sus estadísticas de citas por odontólogo, mientras que el total de pacientes activos es global. No puede administrar usuarios ni crear o reagendar citas administrativamente.
 
 ## Módulos implementados
 
@@ -65,6 +65,7 @@ Puede consultar pacientes y servicios, consultar sus citas y actualizar los esta
 - Citas.
 - Servicios odontológicos.
 - Administración de usuarios.
+- Seguros médicos.
 - Atención odontológica.
 - Diagnósticos.
 - Tratamientos.
@@ -85,8 +86,12 @@ Cita
 ### Pacientes
 
 - La activación y desactivación es lógica; el registro no se elimina físicamente.
-- La cédula es opcional.
-- La cédula es única cuando está informada.
+- Para pacientes de 18 años o más, la cédula es obligatoria.
+- Para pacientes menores de 18 años, la cédula es opcional.
+- Si un menor informa cédula, se aplican las validaciones de formato y unicidad.
+- Un paciente puede tener o no seguro médico; si tiene uno, debe seleccionarse un seguro válido del catálogo.
+- Los seguros inactivos no se utilizan para nuevas asociaciones.
+- Los seguros no se eliminan físicamente; se administran mediante activación y desactivación.
 
 ### Citas
 
@@ -157,7 +162,7 @@ dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 
 La solución cuenta con pruebas para los módulos administrativos y clínicos, Login/autenticación, autorización HTTP e infraestructura.
 
-Estado actual: **171 pruebas correctas**.
+Estado actual: **179 pruebas correctas**.
 
 Las pruebas de datos utilizan SQLite InMemory y no utilizan `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en el entorno `Testing`, con una base SQLite aislada y un esquema de autenticación exclusivo para Tests.
 
