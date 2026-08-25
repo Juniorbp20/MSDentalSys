@@ -383,13 +383,6 @@ namespace MSDentalSys.Web.Controllers
 
         private async Task LoadFormOptionsAsync(CitaFormViewModel model)
         {
-            var pacientes = await _context.Pacientes
-                .Where(p => p.Estado)
-                .OrderBy(p => p.Apellido)
-                .ThenBy(p => p.Nombre)
-                .AsNoTracking()
-                .ToListAsync();
-
             var odontologos = (await _userManager.GetUsersInRoleAsync("Odontologo"))
                 .Where(u => u.Estado)
                 .OrderBy(u => u.Apellido)
@@ -402,16 +395,13 @@ namespace MSDentalSys.Web.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
-            model.Pacientes = pacientes.Select(p => new SelectListItem
-            {
-                Value = p.PacienteId.ToString(),
-                Text = $"{p.Nombre} {p.Apellido}",
-                Selected = p.PacienteId == model.PacienteId
-            });
-            model.PacienteNombre = pacientes
-                .Where(p => p.PacienteId == model.PacienteId)
-                .Select(p => $"{p.Nombre} {p.Apellido}")
-                .FirstOrDefault() ?? model.PacienteNombre;
+            model.Pacientes = [];
+            model.PacienteNombre = model.PacienteId > 0
+                ? await _context.Pacientes
+                    .Where(p => p.PacienteId == model.PacienteId && p.Estado)
+                    .Select(p => p.Nombre + " " + p.Apellido)
+                    .SingleOrDefaultAsync()
+                : null;
             model.Odontologos = odontologos.Select(o => new SelectListItem
             {
                 Value = o.Id,
