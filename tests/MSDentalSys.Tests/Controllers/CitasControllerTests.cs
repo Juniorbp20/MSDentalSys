@@ -246,6 +246,72 @@ public class CitasControllerTests
     }
 
     [Fact]
+    public async Task Index_ConPacienteYEstado_FiltraYConservaNombreSinListaDePacientes()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        var otherPatient = new Paciente
+        {
+            Nombre = "Otro",
+            Apellido = "Paciente",
+            Estado = true
+        };
+        database.Context.Pacientes.Add(otherPatient);
+        database.Context.Citas.AddRange(
+            database.CreateAppointment(new DateTime(2030, 2, 1, 9, 0, 0), "Confirmada"),
+            new Cita
+            {
+                Paciente = otherPatient,
+                OdontologoId = database.OdontologistId,
+                ServicioOdontologicoId = database.ServiceId,
+                FechaHoraInicio = new DateTime(2030, 2, 1, 10, 0, 0),
+                EstadoCita = "Confirmada"
+            });
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Index(null, "Confirmada", database.PatientId);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var appointments = Assert.IsAssignableFrom<IEnumerable<Cita>>(view.Model);
+        Assert.Single(appointments);
+        Assert.Equal(database.PatientId, appointments.Single().PacienteId);
+        Assert.Equal("Paciente Ficticio", view.ViewData["PacienteNombre"]);
+        Assert.Null(view.ViewData["Pacientes"]);
+    }
+
+    [Fact]
+    public async Task Index_ConPacienteInexistente_NoGeneraNombreVisual()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+
+        var result = await database.CreateController().Index(null, null, 999);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var appointments = Assert.IsAssignableFrom<IEnumerable<Cita>>(view.Model);
+        Assert.Empty(appointments);
+        Assert.Null(view.ViewData["PacienteNombre"]);
+    }
+
+    [Fact]
+    public async Task Index_SinFiltros_DevuelveListadoCompleto()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await database.AddSupportDataAsync();
+        database.Context.Citas.AddRange(
+            database.CreateAppointment(new DateTime(2030, 2, 1, 9, 0, 0)),
+            database.CreateAppointment(new DateTime(2030, 2, 1, 10, 0, 0)));
+        await database.Context.SaveChangesAsync();
+
+        var result = await database.CreateController().Index(null, null, null);
+
+        var view = Assert.IsType<ViewResult>(result);
+        var appointments = Assert.IsAssignableFrom<IEnumerable<Cita>>(view.Model);
+        Assert.Equal(2, appointments.Count());
+        Assert.Null(view.ViewData["PacienteNombre"]);
+    }
+
+    [Fact]
     public async Task Reschedule_CitaNoFinal_CambiaHorarioYConservaDatos()
     {
         await using var database = await TestDatabase.CreateAsync();

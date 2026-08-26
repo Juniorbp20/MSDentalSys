@@ -1,10 +1,10 @@
 @model IEnumerable<MSDentalSys.Data.Models.Cita>
 @{
     ViewData["Title"] = "Citas";
-    var pacientes = ViewData["Pacientes"] as IEnumerable<MSDentalSys.Data.Models.Paciente> ?? [];
     var selectedDate = ViewData["Fecha"]?.ToString();
     var selectedStatus = ViewData["Estado"]?.ToString();
     var selectedPatientId = ViewData["PacienteId"] as int?;
+    var selectedPatientName = ViewData["PacienteNombre"]?.ToString() ?? string.Empty;
     var statuses = new[] { "Pendiente", "Confirmada", "Atendida", "Cancelada", "No asistió" };
 }
 
@@ -53,14 +53,10 @@
                 </select>
             </div>
             <div class="col-12 col-md-4">
-                <label for="pacienteId" class="form-label">Paciente</label>
-                <select id="pacienteId" name="pacienteId" class="form-select">
-                    <option value="">Todos los pacientes</option>
-                    @foreach (var paciente in pacientes)
-                    {
-                        <option value="@paciente.PacienteId" selected="@(selectedPatientId == paciente.PacienteId ? "selected" : null)">@paciente.Nombre @paciente.Apellido</option>
-                    }
-                </select>
+                <label for="PacienteBusqueda" class="form-label">Paciente</label>
+                <input id="pacienteId" name="pacienteId" type="hidden" value="@(selectedPatientId?.ToString() ?? string.Empty)" />
+                <input id="PacienteBusqueda" name="PacienteNombre" value="@selectedPatientName" class="form-control" autocomplete="off" placeholder="Buscar por nombre, apellido o c&eacute;dula..." aria-controls="patient-search-results" aria-autocomplete="list" />
+                <div id="patient-search-results" class="list-group mt-2" role="listbox" hidden></div>
             </div>
             <div class="col-12 col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-ms-primary flex-grow-1">Filtrar</button>
@@ -114,3 +110,81 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const search = document.getElementById('PacienteBusqueda');
+            const hiddenId = document.getElementById('pacienteId');
+            const results = document.getElementById('patient-search-results');
+            const form = search?.form;
+            const endpoint = '@Url.Action("BuscarPacientes", "Citas")';
+            let timer;
+            let selectedName = search?.value ?? '';
+
+            const clearResults = () => {
+                if (!results) return;
+                results.innerHTML = '';
+                results.hidden = true;
+            };
+
+            const renderResults = (patients) => {
+                if (!results) return;
+                results.innerHTML = '';
+
+                if (patients.length === 0) {
+                    results.hidden = true;
+                    return;
+                }
+
+                patients.forEach(patient => {
+                    const option = document.createElement('button');
+                    option.type = 'button';
+                    option.className = 'list-group-item list-group-item-action';
+                    option.setAttribute('role', 'option');
+                    const name = document.createElement('strong');
+                    name.textContent = patient.nombreCompleto;
+                    const lineBreak = document.createElement('br');
+                    const documentId = document.createElement('small');
+                    documentId.textContent = patient.cedula ? `Cédula: ${patient.cedula}` : 'Cédula: No registrada';
+                    option.append(name, lineBreak, documentId);
+                    option.addEventListener('click', () => {
+                        search.value = patient.nombreCompleto;
+                        selectedName = patient.nombreCompleto;
+                        hiddenId.value = patient.id;
+                        clearResults();
+                    });
+                    results.appendChild(option);
+                });
+
+                results.hidden = false;
+            };
+
+            search?.addEventListener('input', () => {
+                if (search.value !== selectedName) hiddenId.value = '';
+                clearTimeout(timer);
+                clearResults();
+
+                const term = search.value.trim();
+                if (term.length < 1) return;
+
+                timer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`${endpoint}?termino=${encodeURIComponent(term)}`);
+                        if (response.ok) renderResults(await response.json());
+                    } catch {
+                        clearResults();
+                    }
+                }, 300);
+            });
+
+            form?.addEventListener('submit', () => {
+                if (!search.value.trim() || search.value !== selectedName) hiddenId.value = '';
+            });
+
+            document.addEventListener('click', event => {
+                if (!results?.contains(event.target) && event.target !== search) clearResults();
+            });
+        })();
+    </script>
+}
