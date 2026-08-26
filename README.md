@@ -148,6 +148,8 @@ Algunos nombres de servidor posibles son `.\SQLEXPRESS`, `localhost` y `(localdb
 
 `ApplicationDbContextFactory` se utiliza para operaciones de Entity Framework Core en tiempo de diseno y actualmente esta configurada para SQL Server local. Quienes utilicen otra instancia pueden necesitar revisar esa configuracion antes de ejecutar comandos de migracion. Las migraciones no forman parte de la instalacion normal.
 
+La aplicación Web obtiene `ConnectionStrings:DefaultConnection` desde la configuración de ASP.NET Core, mientras que `ApplicationDbContextFactory` utiliza actualmente una cadena independiente para las operaciones de EF CLI. Si se utiliza otra instancia de SQL Server, también debe revisarse `ApplicationDbContextFactory` antes de ejecutar `dotnet ef migrations ...` o `dotnet ef database update`; esto no requiere modificar las entidades ni las migraciones existentes.
+
 ## Ejecución
 
 Se requiere una conexión SQL Server correctamente configurada para ejecutar la aplicación normalmente.
@@ -162,7 +164,7 @@ dotnet run --project .\src\MSDentalSys.Web\MSDentalSys.Web.csproj
 
 La solución cuenta con pruebas para los módulos administrativos y clínicos, Login/autenticación, autorización HTTP e infraestructura.
 
-Estado actual: **179 pruebas correctas**.
+Estado actual: **182 pruebas correctas**.
 
 Las pruebas de datos utilizan SQLite InMemory y no utilizan `MSDentalSysDB`. Las pruebas HTTP usan `WebApplicationFactory` en el entorno `Testing`, con una base SQLite aislada y un esquema de autenticación exclusivo para Tests.
 
