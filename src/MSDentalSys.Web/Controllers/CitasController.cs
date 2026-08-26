@@ -72,12 +72,12 @@ namespace MSDentalSys.Web.Controllers
             ViewData["Fecha"] = fecha?.ToString("yyyy-MM-dd");
             ViewData["Estado"] = estado;
             ViewData["PacienteId"] = pacienteId;
-            ViewData["Pacientes"] = await _context.Pacientes
-                .Where(p => p.Estado)
-                .OrderBy(p => p.Apellido)
-                .ThenBy(p => p.Nombre)
-                .AsNoTracking()
-                .ToListAsync();
+            ViewData["PacienteNombre"] = pacienteId.HasValue
+                ? await _context.Pacientes
+                    .Where(p => p.PacienteId == pacienteId.Value)
+                    .Select(p => p.Nombre + " " + p.Apellido)
+                    .SingleOrDefaultAsync()
+                : null;
 
             return View(citas);
         }
