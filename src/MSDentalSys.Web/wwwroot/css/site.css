@@ -1612,7 +1612,7 @@ body {
 .login-logo {
   align-self: center;
   width: min(100%, 300px);
-  height: 112px;
+  height: auto;
   border: 1px solid rgba(214, 187, 130, .65);
   border-radius: 14px;
   background: #0d0d0d;
@@ -1717,7 +1717,7 @@ body {
 
   .login-logo {
     width: 220px;
-    height: 86px;
+    height: auto;
   }
 
   .doctor-photo-frame {
